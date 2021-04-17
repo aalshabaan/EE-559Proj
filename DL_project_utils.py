@@ -63,10 +63,11 @@ def read_input(batch_size=100, single_channel=True, normalize=True, pairs=1000, 
 
 def train_model_epoch(model, optimizer, criterion, train_loader):
     tr_loss = 0
-
+    tr_acc = 0
     for batch_idx, (data, target) in enumerate(train_loader):
         optimizer.zero_grad()
         output = model(data)
+        tr_acc += (output.max(1)[1] == target).sum()
 
         loss = criterion(output, target)
         tr_loss += loss.item()
@@ -74,8 +75,8 @@ def train_model_epoch(model, optimizer, criterion, train_loader):
         loss.backward()
         optimizer.step()
 
-    tr_loss = tr_loss / (batch_idx + 1)
-    return tr_loss
+    tr_loss, tr_acc = tr_loss / (batch_idx + 1), (tr_acc)/len(train_loader.dataset)
+    return tr_loss, tr_acc
 
 
 def validate_model_epoch(model, criterion, test_loader):
@@ -136,15 +137,15 @@ def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=
         train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=False)
 
     tr_loss_list = []
+    tr_acc_list = []
     val_loss_list = []
     val_accuracy_list = []
 
     for epoch in range(epochs):
         model.train()
-
-
-        tr_loss = train_model_epoch(model, optimizer, criterion, train_loader)
+        tr_loss, tr_acc = train_model_epoch(model, optimizer, criterion, train_loader)
         tr_loss_list.append(tr_loss)
+        tr_acc_list.append(tr_acc)
 
         if (eval_):
             model.eval()
@@ -153,9 +154,10 @@ def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=
             val_loss_list.append(val_loss)
             val_accuracy_list.append(val_accuracy)
 
-            print('\nEpoch: {}/{}, Train Loss: {:.6f}, Val Loss: {:.6f}, Val Accuracy: {:.6f}% {}/{}'.format(epoch + 1,
+            print('\nEpoch: {}/{}, Train Loss: {:.6f}, Train Accuracy {:.6f}% Val Loss: {:.6f}, Val Accuracy: {:.6f}% {}/{}'.format(epoch + 1,
                                                                                                              epochs,
                                                                                                              tr_loss,
+                                                                                                             tr_acc,
                                                                                                              val_loss,
                                                                                                              100 * val_accuracy,
                                                                                                              correct_pred,
