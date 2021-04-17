@@ -7,7 +7,16 @@ from torch.utils.data import TensorDataset, DataLoader
 import dlc_practical_prologue as prologue
 
 
-def read_input(batch_size=100, single_channel=True, normalize=True, pairs=1000):
+def read_input(batch_size=100, single_channel=True, normalize=True, pairs=1000, validation_split=None):
+    """
+    Read the data from prologue and return data loaders
+    :param batch_size: int: the batch size
+    :param single_channel: bool: True if we want both images concatenated
+    :param normalize: bool: True if we want to normalize the data
+    :param pairs: int: The total number of pairs, note that if single_channel then the returned pictures are twice this number
+    :param validation_split: float: The portion of the training set to be used as validation data
+    :return: train_loader, test_loader: Torch DataLoader objects to facilitate batch training
+    """
     train_input, train_target, train_classes, test_input, test_target, test_classes = \
         prologue.generate_pair_sets(pairs)
 
@@ -26,28 +35,30 @@ def read_input(batch_size=100, single_channel=True, normalize=True, pairs=1000):
         test_input_sc = torch.cat((test_input[:, 0, :, :], test_input[:, 1, :, :]), 0).unsqueeze(1)
         test_classes_sc = torch.cat((test_classes[:, 0], test_classes[:, 1]), 0)
 
+
         #         print('single channel: train_input_sc', train_input_sc.size(), 'train_target', train_target.size(), 'train_classes_sc', train_classes_sc.size())
         #         print('single channel: test_input_sc', test_input_sc.size(), 'test_target', test_target.size(), 'test_classes_sc', test_classes_sc.size())
 
         trainDataset = TensorDataset(train_input_sc, train_classes_sc)
         testDataset = TensorDataset(test_input_sc, test_classes_sc)
 
-        train_loader = DataLoader(trainDataset, batch_size, shuffle=False)
-        test_loader = DataLoader(testDataset, batch_size, shuffle=False)
+
+        #train_loader = DataLoader(trainDataset, batch_size, shuffle=False)
+        #test_loader = DataLoader(testDataset, batch_size, shuffle=False)
 
         test_target_Dataset = TensorDataset(test_input, test_target)
-        test_target_loader = DataLoader(test_target_Dataset, batch_size, shuffle=False)
+        #test_target_loader = DataLoader(test_target_Dataset, batch_size, shuffle=False)
 
-        return train_loader, test_loader, test_target_loader
+        return trainDataset, testDataset, test_target_Dataset
 
     else:
         trainDataset = TensorDataset(train_input, train_target)
         testDataset = TensorDataset(test_input, test_target)
 
-        train_loader = DataLoader(trainDataset, batch_size, shuffle=False)
-        test_loader = DataLoader(testDataset, batch_size, shuffle=False)
+        #train_loader = DataLoader(trainDataset, batch_size, shuffle=False)
+        #test_loader = DataLoader(testDataset, batch_size, shuffle=False)
 
-        return train_loader, test_loader
+        return trainDataset, testDataset
 
 
 def train_model_epoch(model, optimizer, criterion, train_loader):
@@ -71,6 +82,7 @@ def validate_model_epoch(model, criterion, test_loader):
     val_loss = 0
     correct_pred = 0
 
+
     for batch_idx, (data, target) in enumerate(test_loader):
         pred = model(data)
 
@@ -84,11 +96,44 @@ def validate_model_epoch(model, criterion, test_loader):
     return val_loss, correct_pred
 
 
-def train_model(model, train_loader, test_loader, learning_rate=1e-2, epochs=10, eval_=True):
-    optimizer = optim.SGD(model.parameters(), lr=learning_rate)
-    criterion = nn.CrossEntropyLoss()
-    # optimizer = optim.Adam(model.parameters(), lr)
+def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=100 , eval_=True, optimizer='SGD', loss='cross_entropy',
+                validation_split=0.2):
+    """
+    Trains the passed PyTorch model on the passed training dataset, the validation data is fixed and isn't randomly sampled at each epoch
+    :param model: nn.Module: The model to train
+    :param train_dataset: torch.util.data.TensorDataset: The training dataset
+    :param learning_rate: float: The learning rate
+    :param epochs: int: The maximum number of epochs for training
+    :param batch_size: int: The batch size
+    :param eval_: bool: True if we want to validate
+    :param optimizer: str: 'SGD' or 'ADAM, which optimizer to use
+    :param loss: str: 'mse' or 'cross_entropy', which loss to use
+    :param validation_split: float: 0.0 to 1.0, the fraction of the dataset to be used for validation. Has no effect if eval_==False
+    :return: tr_loss_list, val_loss_list, val_accuracy_list: lists containing the training history
+    """
+    if optimizer == 'SGD':
+        optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+    elif optimizer == 'Adam':
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    else:
+        raise Exception('Unsupported optimizer type. Use SGD or Adam')
+
+    if loss == 'cross_entropy':
+        criterion = nn.CrossEntropyLoss()
+    elif loss == 'mse':
+        criterion = nn.MSELoss()
+    else:
+        raise Exception('Unsupported loss, use cross_entropy or mse')
+
     # momentum=momentum
+    if eval_:
+        validation_size = int(validation_split * len(train_dataset))
+        train_size = len(train_dataset) - validation_size
+        train_subset, validation_subset = torch.utils.data.random_split(dataset=train_dataset, lengths=[train_size, validation_size])
+        train_loader = torch.utils.data.DataLoader(dataset=train_subset, batch_size=batch_size, shuffle=False)
+        validation_loader = torch.utils.data.DataLoader(dataset=validation_subset, batch_size=batch_size, shuffle=False)
+    else:
+        train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=False)
 
     tr_loss_list = []
     val_loss_list = []
@@ -96,13 +141,15 @@ def train_model(model, train_loader, test_loader, learning_rate=1e-2, epochs=10,
 
     for epoch in range(epochs):
         model.train()
+
+
         tr_loss = train_model_epoch(model, optimizer, criterion, train_loader)
         tr_loss_list.append(tr_loss)
 
         if (eval_):
             model.eval()
-            val_loss, correct_pred = validate_model_epoch(model, criterion, test_loader)
-            val_accuracy = correct_pred / (test_loader.batch_size * len(test_loader))
+            val_loss, correct_pred = validate_model_epoch(model, criterion, validation_loader)
+            val_accuracy = correct_pred / (validation_loader.batch_size * len(validation_loader))
             val_loss_list.append(val_loss)
             val_accuracy_list.append(val_accuracy)
 
@@ -112,8 +159,8 @@ def train_model(model, train_loader, test_loader, learning_rate=1e-2, epochs=10,
                                                                                                              val_loss,
                                                                                                              100 * val_accuracy,
                                                                                                              correct_pred,
-                                                                                                             test_loader.batch_size * len(
-                                                                                                                 test_loader)))
+                                                                                                             validation_loader.batch_size * len(
+                                                                                                                 validation_loader)))
     #         else:
     #             print('\nEpoch: {}/{}, Train Loss: {:.6f}'.format(epoch + 1, epochs, tr_loss))
 
