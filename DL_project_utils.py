@@ -98,7 +98,7 @@ def validate_model_epoch(model, criterion, test_loader):
 
 
 def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=100 , eval_=True, optimizer='SGD', loss='cross_entropy',
-                validation_split=0.2):
+                validation_split=0.2, verbose=True):
     """
     Trains the passed PyTorch model on the passed training dataset, the validation data is fixed and isn't randomly sampled at each epoch
     :param model: nn.Module: The model to train
@@ -153,20 +153,20 @@ def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=
             val_accuracy = correct_pred / (validation_loader.batch_size * len(validation_loader))
             val_loss_list.append(val_loss)
             val_accuracy_list.append(val_accuracy)
-
-            print('\nEpoch: {}/{}, Train Loss: {:.6f}, Train Accuracy {:.6f}% Val Loss: {:.6f}, Val Accuracy: {:.6f}% {}/{}'.format(epoch + 1,
-                                                                                                             epochs,
-                                                                                                             tr_loss,
-                                                                                                             tr_acc,
-                                                                                                             val_loss,
-                                                                                                             100 * val_accuracy,
-                                                                                                             correct_pred,
-                                                                                                             validation_loader.batch_size * len(
-                                                                                                                 validation_loader)))
+            if verbose:
+                print('\nEpoch: {}/{}, Train Loss: {:.6f}, Train Accuracy {:.6f}% Val Loss: {:.6f}, Val Accuracy: {:.6f}% {}/{}'.format(epoch + 1,
+                                                                                                                 epochs,
+                                                                                                                 tr_loss,
+                                                                                                                 tr_acc,
+                                                                                                                 val_loss,
+                                                                                                                 100 * val_accuracy,
+                                                                                                                 correct_pred,
+                                                                                                                 validation_loader.batch_size * len(
+                                                                                                                     validation_loader)))
     #         else:
     #             print('\nEpoch: {}/{}, Train Loss: {:.6f}'.format(epoch + 1, epochs, tr_loss))
 
-    return tr_loss_list, val_loss_list, val_accuracy_list
+    return tr_loss_list, tr_acc_list, val_loss_list, val_accuracy_list
 
 def predict_sc_accuracy_round(model, test_loader):
     model.eval()
