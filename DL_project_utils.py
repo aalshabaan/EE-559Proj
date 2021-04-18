@@ -61,16 +61,24 @@ def read_input(batch_size=100, single_channel=True, normalize=True, pairs=1000, 
         return trainDataset, testDataset
 
 
-def train_model_epoch(model, optimizer, criterion, train_loader):
+def train_model_epoch(model, optimizer, criterion, train_loader, cuda=False):
     tr_loss = 0
     tr_acc = 0
     for batch_idx, (data, target) in enumerate(train_loader):
-        optimizer.zero_grad()
-        output = model(data)
-        tr_acc += (output.max(1)[1] == target).sum()
 
-        loss = criterion(output, target)
-        tr_loss += loss.item()
+        optimizer.zero_grad()
+        if cuda and torch.cuda.is_available():
+            output = model(data.cuda())
+            tr_acc += (output.max(1)[1] == target.cuda()).sum().item()
+
+            loss = criterion(output, target.cuda())
+            tr_loss += loss.item()
+        else:
+            output = model(data.cpu())
+            tr_acc += (output.max(1)[1] == target.cpu()).sum().item()
+
+            loss = criterion(output, target.cpu())
+            tr_loss += loss.item()
 
         loss.backward()
         optimizer.step()
@@ -79,26 +87,35 @@ def train_model_epoch(model, optimizer, criterion, train_loader):
     return tr_loss, tr_acc
 
 
-def validate_model_epoch(model, criterion, test_loader):
+def validate_model_epoch(model, criterion, test_loader, cuda=False):
     val_loss = 0
     correct_pred = 0
 
+    if cuda and torch.cuda.is_available():
+        for batch_idx, (data, target) in enumerate(test_loader):
+            pred = model(data.cuda())
 
-    for batch_idx, (data, target) in enumerate(test_loader):
-        pred = model(data)
+            loss = criterion(pred, target.cuda())
+            val_loss += loss.item()
 
-        loss = criterion(pred, target)
-        val_loss += loss.item()
+            predicted_label = pred.max(1)[1]
+            correct_pred += (predicted_label == target.cuda()).sum()
+    else:
+        for batch_idx, (data, target) in enumerate(test_loader):
+            pred = model(data.cpu())
 
-        predicted_label = pred.max(1)[1]
-        correct_pred += (predicted_label == target).sum()
+            loss = criterion(pred, target.cpu())
+            val_loss += loss.item()
+
+            predicted_label = pred.max(1)[1]
+            correct_pred += (predicted_label == target).sum()
 
     val_loss = val_loss / (batch_idx + 1)
     return val_loss, correct_pred
 
 
 def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=100 , eval_=True, optimizer='SGD', loss='cross_entropy',
-                validation_split=0.2, verbose=True):
+                validation_split=0.2, verbose=True, cuda=False):
     """
     Trains the passed PyTorch model on the passed training dataset, the validation data is fixed and isn't randomly sampled at each epoch
     :param model: nn.Module: The model to train
@@ -136,6 +153,12 @@ def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=
     else:
         train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=False)
 
+    if cuda and torch.cuda.is_available():
+        model.cuda()
+    else:
+        model.cpu()
+
+
     tr_loss_list = []
     tr_acc_list = []
     val_loss_list = []
@@ -143,13 +166,13 @@ def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=
 
     for epoch in range(epochs):
         model.train()
-        tr_loss, tr_acc = train_model_epoch(model, optimizer, criterion, train_loader)
+        tr_loss, tr_acc = train_model_epoch(model, optimizer, criterion, train_loader, cuda)
         tr_loss_list.append(tr_loss)
         tr_acc_list.append(tr_acc)
 
         if (eval_):
             model.eval()
-            val_loss, correct_pred = validate_model_epoch(model, criterion, validation_loader)
+            val_loss, correct_pred = validate_model_epoch(model, criterion, validation_loader, cuda)
             val_accuracy = correct_pred / (validation_loader.batch_size * len(validation_loader))
             val_loss_list.append(val_loss)
             val_accuracy_list.append(val_accuracy)
