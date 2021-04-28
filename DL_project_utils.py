@@ -175,12 +175,12 @@ def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=
             val_loss, correct_pred = validate_model_epoch(model, criterion, validation_loader, cuda)
             val_accuracy = correct_pred / (validation_loader.batch_size * len(validation_loader))
             val_loss_list.append(val_loss)
-            val_accuracy_list.append(val_accuracy)
+            val_accuracy_list.append(val_accuracy.item())
             if verbose:
                 print('\nEpoch: {}/{}, Train Loss: {:.6f}, Train Accuracy {:.6f}% Val Loss: {:.6f}, Val Accuracy: {:.6f}% {}/{}'.format(epoch + 1,
                                                                                                                  epochs,
                                                                                                                  tr_loss,
-                                                                                                                 tr_acc,
+                                                                                                                 100*tr_acc,
                                                                                                                  val_loss,
                                                                                                                  100 * val_accuracy,
                                                                                                                  correct_pred,
@@ -228,3 +228,24 @@ def predict_sc_accuracy(model, batch_size, learning_rate, epochs, rounds):
                 test_target_loader)))
 
     return val_accuracy_list
+
+def evaluate_model(model, test_data, cuda=False, batch_size=100):
+    test_loader = DataLoader(test_data, batch_size=batch_size)
+    if cuda and torch.cuda.is_available():
+        model.cuda()
+    else:
+        cuda = False
+        model.cpu()
+    model.eval()
+    nb_errs = 0
+    for data, target in test_loader:
+        if cuda:
+            out = model(data.cuda())
+            nb_errs += (out.argmax(dim=1) == target.cuda()).sum().item()
+        else:
+            out = model(data)
+            nb_errs += (out.argmax(dim=1) == target).sum().item()
+
+    return nb_errs/len(test_data)
+
+
