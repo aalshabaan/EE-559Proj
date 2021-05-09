@@ -30,30 +30,48 @@ def read_input(normalize=True, pairs=1000, verbose=False):
         if verbose:
             print('normalize train and test datasets with train mean & std')
 
-    trainDataset = TensorDataset(train_input, train_target)
-    testDataset = TensorDataset(test_input, test_target)
+    trainDataset = TensorDataset(train_input, train_target, train_classes)
+    testDataset = TensorDataset(test_input, test_target, test_classes)
+
 
     return trainDataset, testDataset
 
 
-def train_model_epoch(model, optimizer, criterion, train_loader, cuda=False):
+def train_model_epoch(model, optimizer, criterion, train_loader, cuda=False, auxiliary_loss=False, lbda=0.4):
     tr_loss = 0
     tr_acc = 0
-    for batch_idx, (data, target) in enumerate(train_loader):
+    for batch_idx, (data, target, classes) in enumerate(train_loader):
 
         optimizer.zero_grad()
-        if cuda and torch.cuda.is_available():
-            output = model(data.cuda())
-            tr_acc += (output.max(1)[1] == target.cuda()).sum().item()
+        if not auxiliary_loss:
+            if cuda and torch.cuda.is_available():
+                output = model(data.cuda())
+                tr_acc += (output.max(1)[1] == target.cuda()).sum().item()
 
-            loss = criterion(output, target.cuda())
-            tr_loss += loss.item()
+                loss = criterion(output, target.cuda())
+                tr_loss += loss.item()
+            else:
+                output = model(data.cpu())
+                tr_acc += (output.max(1)[1] == target.cpu()).sum().item()
+
+                loss = criterion(output, target.cpu())
+                tr_loss += loss.item()
         else:
-            output = model(data.cpu())
-            tr_acc += (output.max(1)[1] == target.cpu()).sum().item()
+            classes_0 = classes[:, 0]
+            classes_1 = classes[:, 1]
 
-            loss = criterion(output, target.cpu())
-            tr_loss += loss.item()
+            if cuda and torch.cuda.is_available():
+                output, classes_output = model(data.cuda())
+                tr_acc += (output.max(1)[1] == target.cuda()).sum().item()
+
+                loss = criterion(output, target.cuda()) + lbda*criterion(classes_output[:,:,0], classes_0.cuda()) + lbda*criterion(classes_output[:,:,1], classes_1.cuda())
+                tr_loss += loss.item()
+            else:
+                output, classes_output = model(data.cpu())
+                tr_acc += (output.max(1)[1] == target.cpu()).sum().item()
+
+                loss = criterion(output, target.cpu()) + lbda*criterion(classes_output[:,:,0], classes_0.cpu()) + lbda*criterion(classes_output[:,:,1], classes_1.cpu())
+                tr_loss += loss.item()
 
         loss.backward()
         optimizer.step()
@@ -62,28 +80,48 @@ def train_model_epoch(model, optimizer, criterion, train_loader, cuda=False):
     return tr_loss, tr_acc
 
 
-def validate_model_epoch(model, criterion, test_loader, cuda=False):
+def validate_model_epoch(model, criterion, test_loader, cuda=False, auxiliary_loss=False, lbda=0.4):
     val_loss = 0
     correct_pred = 0
 
-    if cuda and torch.cuda.is_available():
-        for batch_idx, (data, target) in enumerate(test_loader):
-            pred = model(data.cuda())
+    if auxiliary_loss:
+        if cuda and torch.cuda.is_available():
+            for batch_idx, (data, target, classes) in enumerate(test_loader):
+                pred, class_pred = model(data.cuda())
 
-            loss = criterion(pred, target.cuda())
-            val_loss += loss.item()
+                loss = criterion(pred, target.cuda()) + lbda*criterion(class_pred[:,:,0], classes[:,0].cuda()) + lbda*criterion(class_pred[:,:,1], classes[:,1].cuda())
+                val_loss += loss.item()
 
-            predicted_label = pred.max(1)[1]
-            correct_pred += (predicted_label == target.cuda()).sum()
+                predicted_label = pred.max(1)[1]
+                correct_pred += (predicted_label == target.cuda()).sum()
+        else:
+            for batch_idx, (data, target, classes) in enumerate(test_loader):
+                pred, class_pred = model(data.cpu())
+
+                loss = criterion(pred, target.cpu()) + lbda*criterion(class_pred[:,:,0], classes[:,0].cpu()) + lbda*criterion(class_pred[:,:,1], classes[:,1].cpu())
+                val_loss += loss.item()
+
+                predicted_label = pred.max(1)[1]
+                correct_pred += (predicted_label == target.cpu()).sum()
     else:
-        for batch_idx, (data, target) in enumerate(test_loader):
-            pred = model(data.cpu())
+        if cuda and torch.cuda.is_available():
+            for batch_idx, (data, target, classes) in enumerate(test_loader):
+                pred = model(data.cuda())
 
-            loss = criterion(pred, target.cpu())
-            val_loss += loss.item()
+                loss = criterion(pred, target.cuda())
+                val_loss += loss.item()
 
-            predicted_label = pred.max(1)[1]
-            correct_pred += (predicted_label == target).sum()
+                predicted_label = pred.max(1)[1]
+                correct_pred += (predicted_label == target.cuda()).sum()
+        else:
+            for batch_idx, (data, target, classes) in enumerate(test_loader):
+                pred = model(data.cpu())
+
+                loss = criterion(pred, target.cpu())
+                val_loss += loss.item()
+
+                predicted_label = pred.max(1)[1]
+                correct_pred += (predicted_label == target.cpu()).sum()
 
     val_loss = val_loss / (batch_idx + 1)
     return val_loss, correct_pred
@@ -105,7 +143,7 @@ def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=
     :param verbose: bool: If True print training statistics
     :param cuda: bool: If True move model to GPU
     :param momentum: float: momentum for SGD
-    :param weight_decay: float: weight decay for ADAM 
+    :param weight_decay: float: weight decay for ADAM
     :return: tr_loss_list, tr_acc_list, val_loss_list, val_accuracy_list: lists containing the training history
     """
     if optimizer == 'SGD':
@@ -136,6 +174,12 @@ def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=
     else:
         model.cpu()
 
+    if hasattr(model, 'auxiliary_loss'):
+        auxiliary_loss = model.auxiliary_loss
+        lbda = model.auxiliary_weight
+    else:
+        auxiliary_loss = False
+        lbda = 0
 
     tr_loss_list = []
     tr_acc_list = []
@@ -144,13 +188,13 @@ def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=
 
     for epoch in range(epochs):
         model.train()
-        tr_loss, tr_acc = train_model_epoch(model, optimizer, criterion, train_loader, cuda)
+        tr_loss, tr_acc = train_model_epoch(model, optimizer, criterion, train_loader, cuda, auxiliary_loss, lbda)
         tr_loss_list.append(tr_loss)
         tr_acc_list.append(tr_acc)
 
         if (eval_):
             model.eval()
-            val_loss, correct_pred = validate_model_epoch(model, criterion, validation_loader, cuda)
+            val_loss, correct_pred = validate_model_epoch(model, criterion, validation_loader, cuda, auxiliary_loss, lbda)
             val_accuracy = correct_pred / len(validation_loader.dataset)
             val_loss_list.append(val_loss)
             val_accuracy_list.append(val_accuracy.item())
@@ -164,10 +208,14 @@ def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=
     return tr_loss_list, tr_acc_list, val_loss_list, val_accuracy_list
 
 
-
 def evaluate_model(model, test_data, cuda=False, batch_size=100):
     test_loader = DataLoader(test_data, batch_size=batch_size)
-    
+
+    if hasattr(model, 'auxiliary_loss'):
+        auxiliary_loss = model.auxiliary_loss
+    else:
+        auxiliary_loss = False
+
     if cuda and torch.cuda.is_available():
         model.cuda()
     else:
@@ -177,13 +225,21 @@ def evaluate_model(model, test_data, cuda=False, batch_size=100):
     model.eval()
     nb_errs = 0
     
-    for data, target in test_loader:
-        if cuda:
-            out = model(data.cuda())
-            nb_errs += (out.argmax(dim=1) == target.cuda()).sum().item()
+    for data, target, _ in test_loader:
+        if auxiliary_loss:
+            if cuda:
+                out, _ = model(data.cuda())
+                nb_errs += (out.argmax(dim=1) == target.cuda()).sum().item()
+            else:
+                out, _ = model(data)
+                nb_errs += (out.argmax(dim=1) == target).sum().item()
         else:
-            out = model(data)
-            nb_errs += (out.argmax(dim=1) == target).sum().item()
+            if cuda:
+                out = model(data.cuda())
+                nb_errs += (out.argmax(dim=1) == target.cuda()).sum().item()
+            else:
+                out = model(data)
+                nb_errs += (out.argmax(dim=1) == target).sum().item()
 
     return nb_errs/len(test_data)
 
