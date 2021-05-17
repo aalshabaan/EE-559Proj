@@ -76,7 +76,7 @@ results_std['weight_sharing_half_aux'] = test_acc.std()
 
 with open('results.txt', 'w') as f:
     f.write('# Means')
-    f.write(results_mean)
+    f.write(str(results_mean))
     f.write('# Standard Deviations')
-    f.write(results_std)
+    f.write(str(results_std))
 
