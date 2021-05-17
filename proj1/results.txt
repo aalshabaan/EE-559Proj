@@ -1,4 +1,4 @@
 # Means
-{'Baseline': 0.8496, 'resnet': 0.7985, 'weight_sharing': 0.9485999999999999, 'resnet_aux': 0.8286, 'weight_sharing_aux': 0.9799, 'weight_sharing_half_aux': 0.9126}
+{'baseline': 0.8202999999999999, 'baseline_opt': 0.8559999999999999, 'resnet': 0.8008, 'weight_sharing': 0.9437, 'resnet_aux': 0.85, 'weight_sharing_aux': 0.9799, 'weight_sharing_half_aux': 0.9143000000000001}
 # Standard Deviations
-{'Baseline': 0.021411212016137708, 'resnet': 0.038854214700595864, 'weight_sharing': 0.029887120972084263, 'resnet_aux': 0.06881308015195947, 'weight_sharing_aux': 0.006905794668247825, 'weight_sharing_half_aux': 0.027644891028904404}
+{'baseline': 0.02581104414780617, 'baseline_opt': 0.01525122945863711, 'resnet': 0.020846102753272595, 'weight_sharing': 0.025008198655640888, 'resnet_aux': 0.05169139193328036, 'weight_sharing_aux': 0.006139218191268336, 'weight_sharing_half_aux': 0.026366835229128263}

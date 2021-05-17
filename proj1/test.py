@@ -10,8 +10,36 @@ results_std = {}
 nb_rounds = 10
 test_acc = np.empty(nb_rounds)
 
+
 print('BASELINE running...')
-lr, bs, opt= 0.001, 60, "Adam"
+lr, bs, opt= 0.01, 20, "SGD"
+k1, k2 = 5, 3
+c1, c2 = 16, 32
+h1, h2 = 64, 10
+dropout = 0.0
+epochs = 25
+model = CNN_1(batchNorm = False, double_conv=False, nb_channels_1=c1, nb_channels_2=c2, kernel_1=k1, kernel_2=k2, nb_hidden_1=h1, nb_hidden_2=h2, dropout_p=dropout)
+
+for i in range(nb_rounds):
+    train_data, test_data = read_input()
+    _, _, _, _ = train_model(model,
+                                train_dataset=train_data,
+                                learning_rate=lr,
+                                epochs=epochs,
+                                batch_size=bs,
+                                eval_=False,
+                                optimizer=opt,
+                                loss='cross_entropy',
+                                verbose=False,
+                                cuda=True)
+    test_acc[i] = evaluate_model(model, test_data, batch_size=bs, cuda=True)
+results_mean['baseline'] = test_acc.mean()
+results_std['baseline'] = test_acc.std()
+print('mean={}, std={} with {} rounds'.format(results_mean['baseline'],results_std['baseline'],nb_rounds))
+
+
+print('BASELINE optimized running...')
+lr, bs, opt= 0.01, 60, "Adam"
 k1, k2 = 3, 3
 c1, c2 = 32, 32
 h1, h2 = 128, 10
@@ -32,9 +60,9 @@ for i in range(nb_rounds):
                                 verbose=False,
                                 cuda=True)
     test_acc[i] = evaluate_model(model, test_data, batch_size=bs, cuda=True)
-results_mean['Baseline'] = test_acc.mean()
-results_std['Baseline'] = test_acc.std()
-print('mean={}, std={} with {} rounds'.format(results_mean['Baseline'],results_std['Baseline'],nb_rounds))
+results_mean['baseline_opt'] = test_acc.mean()
+results_std['baseline_opt'] = test_acc.std()
+print('mean={}, std={} with {} rounds'.format(results_mean['baseline_opt'],results_std['baseline_opt'],nb_rounds))
 
  
 print('RESNET running...')
