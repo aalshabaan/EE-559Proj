@@ -53,7 +53,7 @@ def load_data(cifar = None, one_hot_labels = False, normalize = False, flatten =
     else:
         data_dir = os.environ.get('PYTORCH_DATA_DIR')
         if data_dir is None:
-            data_dir = './data'
+            data_dir = '../data'
 
     if args.cifar or (cifar is not None and cifar):
         print('* Using CIFAR')
@@ -131,7 +131,7 @@ def generate_pair_sets(nb):
     else:
         data_dir = os.environ.get('PYTORCH_DATA_DIR')
         if data_dir is None:
-            data_dir = './data'
+            data_dir = '../data'
 
     train_set = datasets.MNIST(data_dir + '/mnist/', train = True, download = True)
     train_input = train_set.data.view(-1, 1, 28, 28).float()
