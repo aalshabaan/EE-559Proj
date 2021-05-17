@@ -1,0 +1,4 @@
+# Means
+{'Baseline': 0.8506, 'resnet': 0.8016, 'weight_sharing': 0.9385, 'resnet_aux': 0.8464, 'weight_sharing_aux': 0.9773999999999999, 'weight_sharing_half_aux': 0.8974}
+# Standard Deviations
+{'Baseline': 0.020377438504385177, 'resnet': 0.02896618718437066, 'weight_sharing': 0.022712331452318997, 'resnet_aux': 0.04412527620310156, 'weight_sharing_aux': 0.008627861844049204, 'weight_sharing_half_aux': 0.03330825723450571}

@@ -6,54 +6,66 @@ from torch import nn as nn
 from torch.nn import functional as F
 
 
-class Net1(nn.Module):
-    def __init__(self, nb_hidden=64):
+class CNN_1(nn.Module):
+    def __init__(self, nb_channels_1=32, kernel_1=3, nb_channels_2=64, kernel_2=3, nb_hidden_1 = 128, nb_hidden_2 = 10, dropout_p=0.0, padding=True, double_conv=False, batchNorm=False):
         super().__init__()
-        self.conv1 = nn.Conv2d(1, 16, kernel_size=3, stride=1)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1)
-        self.fc1 = nn.Linear(128, nb_hidden)
-        self.fc2 = nn.Linear(nb_hidden, 10)
+        
+        padding_1=(kernel_1-1)//2 if padding else 0
+        padding_2=(kernel_2-1)//2 if padding else 0
+        pool = 2
+        d1 = (14-kernel_1+1 +2*padding_1)//pool
+        d2 = (d1-kernel_2+1 +2*padding_2)//pool
+        self.nb_features = nb_channels_2*d2*d2
+#         print('Number of features = ', self.nb_features)
+
+        feaure_layers = []
+        feaure_layers.append(nn.Conv2d(2, nb_channels_1, kernel_size=kernel_1, padding=padding_1))
+        feaure_layers.append(nn.ReLU())
+        if batchNorm:
+            feaure_layers.append(nn.BatchNorm2d(nb_channels_1))
+        if double_conv:
+            feaure_layers.append(nn.Conv2d(nb_channels_1, nb_channels_1, kernel_size=kernel_1, padding=padding_1))
+            feaure_layers.append(nn.ReLU())
+            if batchNorm:
+                feaure_layers.append(nn.BatchNorm2d(nb_channels_1))
+        feaure_layers.append(nn.MaxPool2d(kernel_size=(2,2)))
+        feaure_layers.append(nn.Dropout2d(p=dropout_p))
+
+        feaure_layers.append(nn.Conv2d(nb_channels_1, nb_channels_2, kernel_size=kernel_2, padding=padding_2))
+        feaure_layers.append(nn.ReLU())
+        if batchNorm:
+            feaure_layers.append(nn.BatchNorm2d(nb_channels_2))
+        if double_conv:
+            feaure_layers.append(nn.Conv2d(nb_channels_2, nb_channels_2, kernel_size=kernel_2, padding=padding_2))
+            feaure_layers.append(nn.ReLU())
+            if batchNorm:
+                feaure_layers.append(nn.BatchNorm2d(nb_channels_2))
+        feaure_layers.append(nn.MaxPool2d(kernel_size=(2,2)))
+        feaure_layers.append(nn.Dropout2d(p=dropout_p))
+
+        feaure_layers.append(nn.Flatten())
+        self.features = nn.Sequential(*feaure_layers)
+
+        classifier_layers = []
+        classifier_layers.append(nn.Linear(in_features=self.nb_features, out_features=nb_hidden_1))
+        classifier_layers.append(nn.ReLU())
+        if batchNorm:
+            classifier_layers.append(nn.BatchNorm1d(nb_hidden_1))
+        classifier_layers.append(nn.Dropout2d(p=dropout_p))
+
+        classifier_layers.append(nn.Linear(in_features=nb_hidden_1, out_features=nb_hidden_2))
+        classifier_layers.append(nn.ReLU())
+        if batchNorm:
+            classifier_layers.append(nn.BatchNorm1d(nb_hidden_2))
+        classifier_layers.append(nn.Dropout2d(p=dropout_p))
+
+        classifier_layers.append(nn.Linear(in_features=nb_hidden_2, out_features=2))
+        self.classifier = nn.Sequential(*classifier_layers)
 
     def forward(self, x):
-        x = F.max_pool2d(F.relu(self.conv1(x)), kernel_size=2, stride=2)
-        x = F.max_pool2d(F.relu(self.conv2(x)), kernel_size=2, stride=2)
-        x = F.relu(self.fc1(x.view(-1, 128)))
-        x = self.fc2(x)
-        return x
-
-
-class Net2(nn.Module):
-    def __init__(self, nb_hidden=256):
-        super().__init__()
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=5, stride=1, padding=2)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=5, stride=1, padding=2)
-        self.fc1 = nn.Linear(1024, nb_hidden)
-        self.fc2 = nn.Linear(nb_hidden, 10)
-
-    def forward(self, x):
-        #         x = F.relu(F.max_pool2d(self.conv1(x), kernel_size=2, stride=2))
-        #         x = F.relu(F.max_pool2d(self.conv2(x), kernel_size=2, stride=2))
-        x = F.max_pool2d(F.relu(self.conv1(x)), kernel_size=2, stride=2)
-        x = F.max_pool2d(F.relu(self.conv2(x)), kernel_size=2, stride=2, padding=1)
-        x = F.relu(self.fc1(x.view(-1, 1024)))
-        x = self.fc2(x)
-        return x
-
-
-class Net3(nn.Module):
-    def __init__(self, nb_hidden=64):
-        super().__init__()
-        self.conv1 = nn.Conv2d(2, 32, kernel_size=3, stride=1)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, stride=1)
-        self.fc1 = nn.Linear(256, nb_hidden)
-        self.fc2 = nn.Linear(nb_hidden, 2)
-
-    def forward(self, x):
-        x = F.max_pool2d(F.relu(self.conv1(x)), kernel_size=2, stride=2)
-        x = F.max_pool2d(F.relu(self.conv2(x)), kernel_size=2, stride=2)
-        x = F.relu(self.fc1(x.view(-1, 256)))
-        x = self.fc2(x)
-        return x
+        x = self.features(x)
+        x = self.classifier(x)
+        return  x
 
 
 class ResNetBlock(nn.Module):
