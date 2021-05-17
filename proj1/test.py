@@ -2,7 +2,7 @@ from DL_project_utils import train_model, evaluate_model, read_input
 import matplotlib.pyplot as plt
 from models import *
 import numpy as np
-from tqdm import tqdm
+
 
 results_mean = {}
 results_std = {}
@@ -16,10 +16,10 @@ k1, k2 = 3, 3
 c1, c2 = 32, 32
 h1, h2 = 128, 10
 dropout = 0.2
-epochs = 60
+epochs = 25
 model = CNN_1(batchNorm = True, double_conv=True, nb_channels_1=c1, nb_channels_2=c2, kernel_1=k1, kernel_2=k2, nb_hidden_1=h1, nb_hidden_2=h2, dropout_p=dropout)
 
-for i in tqdm(range(nb_rounds)):
+for i in range(nb_rounds):
     train_data, test_data = read_input()
     _, _, _, _ = train_model(model,
                                 train_dataset=train_data,
@@ -44,7 +44,7 @@ lr = 1e-2
 model = ResNet(nb_residual_blocks = 10, nb_channels = 10, kernel_size = 5,
                nb_classes = 10, nb_pred = 2,
                auxiliary_loss=False)
-for i in tqdm(range(nb_rounds)):
+for i in range(nb_rounds):
 
     train_data, test_data = read_input()
     _,_,_,_ = train_model(model, train_data, epochs=epochs, eval_=False, cuda=True, verbose=False, optimizer=optimizer, learning_rate=lr)
@@ -59,7 +59,7 @@ epochs = 25
 optimizer = 'Adam'
 lr = 1e-2
 model = SiameseNet1(auxiliary_loss=False)
-for i in tqdm(range(nb_rounds)):
+for i in range(nb_rounds):
 
     train_data, test_data = read_input()
     _,_,_,_ = train_model(model, train_data, epochs=epochs, eval_=False, cuda=True, verbose=False, optimizer=optimizer, learning_rate=lr)
@@ -76,7 +76,7 @@ lr = 1e-2
 model = ResNet(nb_residual_blocks = 10, nb_channels = 10, kernel_size = 5,
                nb_classes = 10, nb_pred = 2,
                auxiliary_loss=True, auxiliary_weight=0.4)
-for i in tqdm(range(nb_rounds)):
+for i in range(nb_rounds):
 
     train_data, test_data = read_input()
     _,_,_,_ = train_model(model, train_data, epochs=epochs, eval_=False, cuda=True, verbose=False, optimizer=optimizer, learning_rate=lr)
@@ -91,7 +91,7 @@ epochs = 25
 optimizer = 'Adam'
 lr = 1e-2
 model = SiameseNet1(auxiliary_loss=True, auxiliary_weight=0.4)
-for i in tqdm(range(nb_rounds)):
+for i in range(nb_rounds):
 
     train_data, test_data = read_input()
     _,_,_,_ = train_model(model, train_data, epochs=epochs, eval_=False, cuda=True, verbose=False, optimizer=optimizer, learning_rate=lr)
@@ -107,7 +107,7 @@ epochs = 25
 optimizer = 'Adam'
 lr = 1e-2
 model = SiameseNet2(auxiliary_loss=False, auxiliary_weight=0.4)
-for i in tqdm(range(nb_rounds)):
+for i in range(nb_rounds):
 
     train_data, test_data = read_input()
     _,_,_,_ = train_model(model, train_data, epochs=epochs, eval_=False, cuda=True, verbose=False, optimizer=optimizer, learning_rate=lr)
