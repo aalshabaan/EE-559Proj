@@ -1,4 +1,5 @@
 from torch import empty
+import math
 
 class Module:
     """
@@ -79,7 +80,7 @@ class Linear(Module):
             if self.bias:
                 self.dl_db.add(dl_dx_out.sum(0))
             self.dl_dw.add(dl_dx_out.view(-1,1).mm(i.sum(0).view(1,-1)))
-            out.append(self.w.t().mm(dl_dx_out))
+            out.append(self.w.t().mm(dl_dx_out.view(-1, 1)).squeeze())
         return tuple(out)
 
     
@@ -111,14 +112,14 @@ class Sequential(Module):
     def forward(self, *input_):
         output = input_
         for m in self.module_list:
-            print(output)
+            #print(output)
             output = m.forward(*output)
         return output
 
     def backward(self, *gradwrtoutput):
         grad = gradwrtoutput
         for i in range(len(self.module_list)-1, 0, -1):
-            print(grad)
+            print(grad[0].shape)
             grad = self.module_list[i].backward(*grad)
         return grad
 
@@ -145,9 +146,9 @@ class ReLU(Module):
     def backward(self, *gradwrtoutput):
         out = []
         for i,grad in zip(self.inputs,gradwrtoutput):
-            out_grad = grad.clone()
+            out_grad = grad.squeeze().diag()
             out_grad[i<0] = 0
-            out.append(out_grad)
+            out.append(out_grad.sum(0))
         return tuple(out)
 
     def param(self):
@@ -172,8 +173,8 @@ class Tanh(Module):
 
     def backward(self, *gradwrtoutput):
         out = []
-        for i,grad in zip(self.inputs,gradwrtoutput):
-            out.append(grad * (1-i.tanh().pow(2)))
+        for i,grad in zip(self.inputs, gradwrtoutput):
+            out.append(grad * (1-i.tanh().pow(2)).sum(0))
         return tuple(out)
 
     def param(self):
