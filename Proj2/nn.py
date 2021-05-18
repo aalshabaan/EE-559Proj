@@ -1,12 +1,12 @@
+from torch import empty
 
-
-class Module(object):
+class Module:
     """
     Base class for all other Modules
     """
 
     def __init__(self):
-        pass
+        super().__init__()
 
     def forward(self, *input_):
         raise NotImplementedError
@@ -18,51 +18,68 @@ class Module(object):
         return []
 
     def zero_grad(self):
-        pass
+        raise NotImplementedError
     
     
     
 class Linear(Module):
-    def __init__(self, in_features, out_features, bias=True):
+    def __init__(self, in_features:int, out_features:int, bias=True):
         """
-        Class of Linear module. Applies a linear transformation to the incoming data
+        Class of Linear module. Applies an affine transformation to the incoming data
         :param in_features: size of each input sample
         :param out_features: size of each output sample
-        :bias: if set to False, the layer will not learn an additive bias. Default: True
+        :param bias: if set to False, the layer will not learn an additive bias. Default: True
         """
         super(Module, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
         
-        self.w = torch.empty(out_features, in_features)
-        self.dl_dw = torch.empty(out_features, in_features)
-        
+        self.w = empty(out_features, in_features)
+        self.w.uniform_()
+        self.dl_dw = empty(out_features, in_features)
+        self.dl_dw.zero_()
+        self.bias = bias
         if bias:
-            self.b = torch.empty(out_features)
-            self.dl_db = torch.empty(out_features)
-        else:
-            self.b = None
-            self.dl_db = None
+            self.b = empty(out_features)
+            self.b.uniform_()
+            self.dl_db = empty(out_features)
+            self.dl_db.zero_()
     
     
-    def forward(self, x):
+    def forward(self, *inputs):
         """
         Perform forward pass
-        :param x: input tensor
+        :param x: input tensors
         :return: result of forward pass
         """
-        self.x = x
-        if self.b is None:
-            output = self.x.mm(self.w.t())
-        else
-            output = self.x.mm(self.w.t()) + self.b
+        output = []
+        for x in inputs:
+            #print(x)
+            if not self.bias:
+                output.append(x.mm(self.w.t()))
+            else:
+                output.append(x.mm(self.w.t()) + self.b)
+        self.inputs = inputs
+        #print(output)
+        output = tuple(output)
+        #print(output)
         return output
     
     
-    def backward(self, dl_dx_out):
+    def backward(self, *dl_ds):
         """
         Perform backward pass
         """
+        # dl_db = dl_ds (sum over all samples in batch)
+        # dl_dw = dl_ds @ x^(l-1).T (sum over samples in batch)
+        # dl_dx = w.T @ dl_ds
+        out = []
+        for i,dl_dx_out in zip(self.inputs,dl_ds):
+            self.dl_db.add(dl_dx_out.sum(0))
+            self.dl_dw.add(dl_dx_out.view(-1,1).mm(i.sum(0).view(1,-1)))
+            out.append(self.w.t().mm(dl_dx_out))
+        return tuple(out)
+
     
     
     def param(self):
@@ -70,33 +87,43 @@ class Linear(Module):
         Parameters of module
         :return: a list of pairs, each composed of a parameter tensor and a gradient tensor with respect to the parameter tensor
         """
-        if self.b is None:
+        if not self.bias:
             return [(self.w, self.dl_dw)]
         else:
             return [(self.w, self.dl_dw), (self.b, self.dl_db)]
 
     
     def zero_grad(self):
-        pass
+        self.dl_dw.fill_(0)
+        if self.bias:
+            self.dl_db.fill_(0)
 
 
 
 class Sequential(Module):
     
-    def __init__(self):
-        super().__init__()
-        
+    def __init__(self, *modules):
+        super(Module, self).__init__()
+        self.module_list = list(modules)
+
     def forward(self, *input_):
-        pass
+        output = input_
+        for m in self.module_list:
+            print(output)
+            output = m.forward(*output)
+        return output
 
     def backward(self, *gradwrtoutput):
-        pass
+        grad = gradwrtoutput
+        for i in range(len(self.module_list), 0, -1):
+            grad = self.module_list[i].backward(grad)
+        return grad
 
     def param(self):
-        pass
+        return [m.param() for m in self.module_list]
 
     def zero_grad(self):
-        pass
+        [m.zero_grad() for m in self.module_list]
     
     
     
@@ -106,13 +133,22 @@ class ReLU(Module):
         super().__init__()
         
     def forward(self, *input_):
-        pass
+        for i in input_:
+            #print(i)
+            i[i<0] = 0
+        self.inputs = input_
+        return input_
 
     def backward(self, *gradwrtoutput):
-        pass
+        out = []
+        for i,grad in zip(self.inputs,gradwrtoutput):
+            out_grad = grad.clone()
+            out_grad[i<0] = 0
+            out.append(out_grad)
+        return tuple(out)
 
     def param(self):
-        pass
+        return []
 
     def zero_grad(self):
         pass
@@ -125,13 +161,19 @@ class Tanh(Module):
         super().__init__()
         
     def forward(self, *input_):
-        pass
+        out = []
+        for i in input_:
+            out.append(i.tanh())
+        self.inputs = input_
+        return tuple(out)
 
     def backward(self, *gradwrtoutput):
-        pass
+        out = []
+        for i,grad in zip(self.inputs,gradwrtoutput):
+            out.append(grad * (1-i.tanh().pow(2)))
 
     def param(self):
-        pass
+        return []
 
     def zero_grad(self):
         pass
