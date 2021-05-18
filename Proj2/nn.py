@@ -34,14 +34,15 @@ class Linear(Module):
         self.in_features = in_features
         self.out_features = out_features
         
+        std = 1 / math.sqrt(in_features)
         self.w = empty(out_features, in_features)
-        self.w.uniform_()
+        self.w.uniform_(-std, std)
         self.dl_dw = empty(out_features, in_features)
         self.dl_dw.zero_()
         self.bias = bias
         if bias:
             self.b = empty(out_features)
-            self.b.uniform_()
+            self.b.uniform_(-std, std)
             self.dl_db = empty(out_features)
             self.dl_db.zero_()
     
