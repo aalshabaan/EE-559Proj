@@ -75,7 +75,8 @@ class Linear(Module):
         # dl_dx = w.T @ dl_ds
         out = []
         for i,dl_dx_out in zip(self.inputs,dl_ds):
-            self.dl_db.add(dl_dx_out.sum(0))
+            if self.bias:
+                self.dl_db.add(dl_dx_out.sum(0))
             self.dl_dw.add(dl_dx_out.view(-1,1).mm(i.sum(0).view(1,-1)))
             out.append(self.w.t().mm(dl_dx_out))
         return tuple(out)
@@ -115,8 +116,9 @@ class Sequential(Module):
 
     def backward(self, *gradwrtoutput):
         grad = gradwrtoutput
-        for i in range(len(self.module_list), 0, -1):
-            grad = self.module_list[i].backward(grad)
+        for i in range(len(self.module_list)-1, 0, -1):
+            print(grad)
+            grad = self.module_list[i].backward(*grad)
         return grad
 
     def param(self):
@@ -171,6 +173,7 @@ class Tanh(Module):
         out = []
         for i,grad in zip(self.inputs,gradwrtoutput):
             out.append(grad * (1-i.tanh().pow(2)))
+        return tuple(out)
 
     def param(self):
         return []
