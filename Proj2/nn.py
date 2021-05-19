@@ -146,9 +146,7 @@ class ReLU(Module):
     def backward(self, *gradwrtoutput):
         out = []
         for i,grad in zip(self.inputs,gradwrtoutput):
-            out_grad = grad.squeeze().diag()
-            out_grad[i<0] = 0
-            out.append(out_grad.sum(0))
+            out.append(i.gt(0)*grad)
         return tuple(out)
 
     def param(self):
