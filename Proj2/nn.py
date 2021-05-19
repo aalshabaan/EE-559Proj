@@ -182,3 +182,29 @@ class Tanh(Module):
 
     def zero_grad(self):
         pass
+    
+    
+    class LossMSE(Module):
+    """
+    Class of MSE loss
+    """
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, pred, target):
+        """
+        Perform forward pass
+        :param pred: predicted value
+        :param target: target value
+        :return: result of forward pass
+        """
+        self.pred = pred
+        self.target = target
+        return (self.pred - self.target).pow(2).mean()
+    
+    def backward(self):
+        """
+        Perform backward pass
+        :return: gradient of the loss with respect to predicted values
+        """
+        return 2 * (self.pred - self.target) / (self.target.size()[0] * self.target.size()[1])
