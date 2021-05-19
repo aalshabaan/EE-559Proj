@@ -119,7 +119,7 @@ class Sequential(Module):
     def backward(self, *gradwrtoutput):
         grad = gradwrtoutput
         for i in range(len(self.module_list)-1, 0, -1):
-            print(grad[0].shape)
+            #print(grad[0].shape)
             grad = self.module_list[i].backward(*grad)
         return grad
 
@@ -139,14 +139,14 @@ class ReLU(Module):
     def forward(self, *input_):
         for i in input_:
             #print(i)
-            i[i<0] = 0
+            i.relu_()
         self.inputs = input_
         return input_
 
     def backward(self, *gradwrtoutput):
         out = []
-        for i,grad in zip(self.inputs,gradwrtoutput):
-            out.append(i.gt(0)*grad)
+        for i, grad in zip(self.inputs,gradwrtoutput):
+            out.append(i.gt(0).sum(0)*grad)
         return tuple(out)
 
     def param(self):
