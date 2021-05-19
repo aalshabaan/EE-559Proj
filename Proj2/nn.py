@@ -184,7 +184,7 @@ class Tanh(Module):
         pass
     
     
-    class LossMSE(Module):
+class LossMSE(Module):
     """
     Class of MSE loss
     """
