@@ -26,7 +26,8 @@ class SGD(Optim):
         self.momentum = momentum
         u = []
         for p in self.model.param():
-            u.append(torch.empty(p[0].size()).fill_(0))
+            if len(p)!=0:#<--------------------------------
+                u.append(empty(p[0][0].size()).fill_(0))
         self.u = u
         
     def step(self):

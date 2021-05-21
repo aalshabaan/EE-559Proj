@@ -198,11 +198,13 @@ class LossMSE(Module):
         """
         self.pred = pred
         self.target = target
-        return (self.pred - self.target).pow(2).mean()
+#         return (self.pred - self.target).pow(2).mean()
+        return (self.pred[0] - self.target[0]).pow(2).mean()
     
     def backward(self):
         """
         Perform backward pass
         :return: gradient of the loss with respect to predicted values
         """
-        return 2 * (self.pred - self.target) / (self.target.size()[0] * self.target.size()[1])
+        return 2 * (self.pred[0] - self.target[0]) / (self.target[0].size()[0] * self.target[0].size()[1])
+#         return 2 * (self.pred - self.target) / (self.target.size()[0] * self.target.size()[1])
