@@ -1,4 +1,4 @@
-from torch import empty
+from torch import empty, Tensor
 import math
 
 class Module:
@@ -48,40 +48,36 @@ class Linear(Module):
             self.dl_db.zero_()
     
     
-    def forward(self, *inputs):
+    def forward(self, x:Tensor):
         """
         Perform forward pass
         :param x: input tensors
         :return: result of forward pass
         """
-        output = []
-        for x in inputs:
-            #print(x)
-            if not self.bias:
-                output.append(x.mm(self.w.t()))
-            else:
-                output.append(x.mm(self.w.t()) + self.b)
-        self.inputs = inputs
+        self.x = x.clone()
+        if self.bias:
+            return x.mm(self.w.t()) + self.b
         #print(output)
-        output = tuple(output)
+        else:
+            return x.mm(self.w.t())
         #print(output)
-        return output
+
     
     
-    def backward(self, *dl_ds):
+    def backward(self, dl_ds:Tensor):
         """
         Perform backward pass
         """
         # dl_db = dl_ds (sum over all samples in batch)
         # dl_dw = dl_ds @ x^(l-1).T (sum over samples in batch)
         # dl_dx = w.T @ dl_ds
-        out = []
-        for i,dl_dx_out in zip(self.inputs,dl_ds):
-            if self.bias:
-                self.dl_db.add(dl_dx_out.sum(0))
-            self.dl_dw.add(dl_dx_out.view(-1,1).mm(i.sum(0).view(1,-1)))
-            out.append(self.w.t().mm(dl_dx_out.view(-1, 1)).squeeze())
-        return tuple(out)
+
+        if self.bias:
+            self.dl_db += dl_ds.sum(0)
+        #print('X shape', self.x.shape)
+        #print('dl_ds:', dl_ds.shape)
+        self.dl_dw += dl_ds.t().mm(self.x)
+        return dl_ds.mm(self.w)
 
     
     
@@ -103,24 +99,28 @@ class Linear(Module):
 
 
 
+
 class Sequential(Module):
     
     def __init__(self, *modules):
         super(Module, self).__init__()
         self.module_list = list(modules)
 
-    def forward(self, *input_):
+    def forward(self, input_):
         output = input_
+        #print('FORWARD')
         for m in self.module_list:
-            #print(output)
-            output = m.forward(*output)
+            #print(output.shape)
+            output = m.forward(output)
         return output
 
-    def backward(self, *gradwrtoutput):
+    def backward(self, gradwrtoutput):
+        #print('BACK')
         grad = gradwrtoutput
         for i in range(len(self.module_list)-1, 0, -1):
-            #print(grad[0].shape)
-            grad = self.module_list[i].backward(*grad)
+            #print(type(self.module_list[i]))
+            #print("gradient shape", grad.shape)
+            grad = self.module_list[i].backward(grad)
         return grad
 
     def param(self):
@@ -136,18 +136,12 @@ class ReLU(Module):
     def __init__(self):
         super().__init__()
         
-    def forward(self, *input_):
-        for i in input_:
-            #print(i)
-            i.relu_()
-        self.inputs = input_
-        return input_
+    def forward(self, x:Tensor):
+        self.grad = x.gt(0)
+        return x.relu()
 
-    def backward(self, *gradwrtoutput):
-        out = []
-        for i, grad in zip(self.inputs,gradwrtoutput):
-            out.append(i.gt(0).sum(0)*grad)
-        return tuple(out)
+    def backward(self, dl_dx:Tensor):
+        return self.grad*dl_dx
 
     def param(self):
         return []
@@ -162,18 +156,12 @@ class Tanh(Module):
     def __init__(self):
         super().__init__()
         
-    def forward(self, *input_):
-        out = []
-        for i in input_:
-            out.append(i.tanh())
-        self.inputs = input_
-        return tuple(out)
+    def forward(self, x:Tensor):
+        self.x = x
+        return x.tanh()
 
-    def backward(self, *gradwrtoutput):
-        out = []
-        for i,grad in zip(self.inputs, gradwrtoutput):
-            out.append(grad * (1-i.tanh().pow(2)).sum(0))
-        return tuple(out)
+    def backward(self, dl_dx:Tensor):
+        return dl_dx*(1-self.x.tanh().pow(2))
 
     def param(self):
         return []
@@ -189,22 +177,28 @@ class LossMSE(Module):
     def __init__(self):
         super().__init__()
     
-    def forward(self, pred, target):
+    def forward(self, pred:Tensor, target:Tensor):
         """
         Perform forward pass
         :param pred: predicted value
         :param target: target value
         :return: result of forward pass
         """
+
         self.pred = pred
         self.target = target
+        if len(target.size()) == 1:
+            self.target = self.target.unsqueeze(1)
 #         return (self.pred - self.target).pow(2).mean()
-        return (self.pred[0] - self.target[0]).pow(2).mean()
+        return (self.pred - self.target).pow(2).mean()
     
     def backward(self):
         """
         Perform backward pass
         :return: gradient of the loss with respect to predicted values
         """
-        return 2 * (self.pred[0] - self.target[0]) / (self.target[0].size()[0] * self.target[0].size()[1])
+        #print('MSE')
+        #print(self.pred.shape)
+        #print(self.target.shape)
+        return 2 * (self.pred - self.target) / (self.target.size(0))
 #         return 2 * (self.pred - self.target) / (self.target.size()[0] * self.target.size()[1])

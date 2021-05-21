@@ -35,7 +35,7 @@ def train_model_epoch(model, train_input, train_target, optimizer, criterion, ba
     for b_indx in range(0, data_size, batch_size):
         data = train_input.narrow(0, b_indx, batch_size)
         target = train_target.narrow(0, b_indx, batch_size)
-        target = tuple([target.view(-1,1)]) #<----------------------------
+
 
         model.zero_grad()
         output = model.forward(data)

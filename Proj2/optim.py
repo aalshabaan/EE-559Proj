@@ -9,7 +9,7 @@ class Optim(object):
         Performs a single optimization step. Parameter update
         :param input: parameters for step function
         """
-        raise NonImplementedError
+        raise NotImplementedError
        
     
 class SGD(Optim):
@@ -28,9 +28,25 @@ class SGD(Optim):
         for p in self.model.param():
             if len(p)!=0:#<--------------------------------
                 u.append(empty(p[0][0].size()).fill_(0))
+            else:
+                u.append(None)
         self.u = u
+        #print(self.u)
         
     def step(self):
-        for i, p in enumerate(self.model.param()):
-            self.u[i] = self.momentum * self.u[i] + self.lr * p[1]
-            p[0] = p[0] - self.u[i]
+
+        for module in self.model.module_list:
+            for u,p in zip(self.u,module.param()):
+                if not u is None:
+
+                    print(p)
+                    u = self.momentum * u
+                    u += self.lr * p[1]
+                    p[0] = p[0] - u
+        '''for i, param_set in enumerate(self.model.param()):
+            if not self.u[i] is None:
+                for p in param_set:
+                    print(p)
+                    self.u[i] = self.momentum * self.u[i]
+                    self.u[i] += self.lr * p[1]
+                    p[0] = p[0] - self.u[i]'''
