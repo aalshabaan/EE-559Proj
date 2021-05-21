@@ -80,7 +80,7 @@ class Linear(Module):
             if self.bias:
                 self.dl_db.add(dl_dx_out.sum(0))
             self.dl_dw.add(dl_dx_out.view(-1,1).mm(i.sum(0).view(1,-1)))
-            out.append(self.w.t().mm(dl_dx_out.view(-1, 1)).squeeze())
+            out.append(self.w.t().mm(dl_dx_out.view(1, -1)).squeeze())
         return tuple(out)
 
     
@@ -199,6 +199,7 @@ class LossMSE(Module):
         self.pred = pred
         self.target = target
 #         return (self.pred - self.target).pow(2).mean()
+
         return (self.pred[0] - self.target[0]).pow(2).mean()
     
     def backward(self):
@@ -208,3 +209,33 @@ class LossMSE(Module):
         """
         return 2 * (self.pred[0] - self.target[0]) / (self.target[0].size()[0] * self.target[0].size()[1])
 #         return 2 * (self.pred - self.target) / (self.target.size()[0] * self.target.size()[1])
+
+
+
+
+#     def forward(self, *pred, *target):
+#         """
+#         Perform forward pass
+#         :param pred: predicted value
+#         :param target: target value
+#         :return: result of forward pass
+#         """
+#         self.pred = pred
+#         self.target = target
+#         output = []
+#         for p, t in zip(pred, target)
+#             output.append((p-t).pow(2).mean())
+#         return tuple(output)
+    
+#     def backward(self):
+#         """
+#         Perform backward pass
+#         :return: gradient of the loss with respect to predicted values
+#         """
+#         output = []
+#         for p, t in zip(pred, target)
+# #             output.append(2 *(p - t) / (t.size()[0] * t.size()[1]))
+#             output.append(2 *(p-t)/(t.size()[0] * t.size()[1]))
+#         return tuple(output)
+    
+# #         return 2 * (self.pred - self.target) / (self.target.size()[0] * self.target.size()[1])
