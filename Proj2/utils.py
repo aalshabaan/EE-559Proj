@@ -32,9 +32,9 @@ def train_model_epoch(model, train_input, train_target, optimizer, criterion, ba
     tr_acc = 0
     data_size = train_input.size()[0]
     
-    for b_indx in range(0, data_size, batch_size):
-        data = train_input.narrow(0, b_indx, batch_size)
-        target = train_target.narrow(0, b_indx, batch_size)
+    for data,target in zip(train_input.split(batch_size), train_target.split(batch_size)):
+        #data = train_input.narrow(0, b_indx, batch_size)
+        #target = train_target.narrow(0, b_indx, batch_size)
 
 
         model.zero_grad()
@@ -42,8 +42,10 @@ def train_model_epoch(model, train_input, train_target, optimizer, criterion, ba
         
         loss = criterion.forward(output, target)
         
-        tr_loss += loss        
-#         tr_acc += (output.max(1)[1] == target).sum().item()
+        tr_loss += loss
+        #print(output.shape)
+        tr_acc += (output.gt(0.5).squeeze() == target.squeeze()).sum().item()
+
 
         l_grad = criterion.backward()
         model.backward(l_grad)
@@ -53,17 +55,18 @@ def train_model_epoch(model, train_input, train_target, optimizer, criterion, ba
     return tr_loss, tr_acc
 
 
-def train_model(model, train_input, train_target, learning_rate=1e-2, epochs=10, batch_size=100, optimizer='SGD', loss='mse', verbose=True, momentum=0.0):
+def train_model(model, train_input, train_target, learning_rate=1e-2, epochs=10,
+                batch_size=100, optimizer='SGD', loss='mse', verbose=True, momentum=0.0):
         
     if optimizer == 'SGD':
         optimizer = SGD(model, lr=learning_rate, momentum=momentum)
     else:
-        raise Exception('Unsupported optimizer type, use SGD.')
+        raise Exception('Unsupported optimizer type, use "SGD".')
 
     if loss == 'mse':
         criterion = LossMSE()
     else:
-        raise Exception('Unsupported loss, use MSE.')
+        raise Exception('Unsupported loss, use "mse".')
     
     tr_loss_list = []
     tr_acc_list = []  

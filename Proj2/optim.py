@@ -25,9 +25,9 @@ class SGD(Optim):
         self.lr = lr
         self.momentum = momentum
         u = []
-        for p in self.model.param():
-            if len(p)!=0:#<--------------------------------
-                u.append(empty(p[0][0].size()).fill_(0))
+        for param_set in self.model.param():
+            if len(param_set)!=0:#<--------------------------------
+                u.append([empty(p[1].size()).fill_(0) for p in param_set])
             else:
                 u.append(None)
         self.u = u
@@ -35,14 +35,11 @@ class SGD(Optim):
         
     def step(self):
 
-        for module in self.model.module_list:
-            for u,p in zip(self.u,module.param()):
-                if not u is None:
-
-                    print(p)
-                    u = self.momentum * u
-                    u += self.lr * p[1]
-                    p[0] = p[0] - u
+        for u_set, param_set in zip(self.u, self.model.param()):
+            if u_set is not None:
+                for u, p in zip(u_set, param_set):
+                    u = self.momentum * u + self.lr * p[1]
+                    p[0].sub_(u)
         '''for i, param_set in enumerate(self.model.param()):
             if not self.u[i] is None:
                 for p in param_set:
