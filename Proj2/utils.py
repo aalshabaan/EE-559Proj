@@ -80,3 +80,15 @@ def train_model(model, train_input, train_target, learning_rate=1e-2, epochs=10,
             print('\nEpoch: {}/{}, Train Loss: {:.6f}, Train Accuracy {:.6f}%'.format(epoch + 1, epochs, tr_loss, 100*tr_acc))
 
     return tr_loss_list, tr_acc_list
+
+
+def evaluate_model(model, test_input, test_target, batch_size=100):
+
+    test_acc = 0
+    
+    for data,target in zip(test_input.split(batch_size), test_target.split(batch_size)):
+
+        output = model.forward(data)
+        test_acc += (output.gt(0.5).squeeze() == target.squeeze()).sum().item()
+
+    return  test_acc/test_input.size()[0]

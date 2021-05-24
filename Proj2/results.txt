@@ -1,0 +1,4 @@
+# Means
+{'baseline_ReLU': 0.9694999999999998, 'baseline_Tanh': 0.9551000000000001, 'baseline_ReLU_Tanh': 0.9650000000000001}
+# Standard Deviations
+{'baseline_ReLU': 0.01180889495253473, 'baseline_Tanh': 0.01658583733189253, 'baseline_ReLU_Tanh': 0.011233877335986903}

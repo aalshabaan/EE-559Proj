@@ -26,7 +26,7 @@ class SGD(Optim):
         self.momentum = momentum
         u = []
         for param_set in self.model.param():
-            if len(param_set)!=0:#<--------------------------------
+            if len(param_set)!=0:
                 u.append([empty(p[1].size()).fill_(0) for p in param_set])
             else:
                 u.append(None)
