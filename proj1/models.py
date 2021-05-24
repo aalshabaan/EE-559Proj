@@ -6,6 +6,7 @@ from torch import nn as nn
 from torch.nn import functional as F
 
 
+
 class CNN_1(nn.Module):
     def __init__(self, nb_channels_1=32, kernel_1=3, nb_channels_2=64, kernel_2=3, nb_hidden_1 = 128, nb_hidden_2 = 10, dropout_p=0.0, padding=True, double_conv=False, batchNorm=False):
         super().__init__()
@@ -16,7 +17,6 @@ class CNN_1(nn.Module):
         d1 = (14-kernel_1+1 +2*padding_1)//pool
         d2 = (d1-kernel_2+1 +2*padding_2)//pool
         self.nb_features = nb_channels_2*d2*d2
-#         print('Number of features = ', self.nb_features)
 
         feaure_layers = []
         feaure_layers.append(nn.Conv2d(2, nb_channels_1, kernel_size=kernel_1, padding=padding_1))
@@ -68,6 +68,7 @@ class CNN_1(nn.Module):
         return  x
 
 
+    
 class ResNetBlock(nn.Module):
     def __init__(self, nb_channels, kernel_size,
                  skip_connections=True, batch_normalization=True):
@@ -102,6 +103,7 @@ class ResNetBlock(nn.Module):
         return y
 
 
+    
 class ResNet(nn.Module):
 
     def __init__(self, nb_residual_blocks, nb_channels,
@@ -142,6 +144,8 @@ class ResNet(nn.Module):
             x = self.fc(x)
             return x
 
+        
+        
 class SiameseNet1(nn.Module):
     """
     Siamese model with possible auxiliary losses that are used to train both the convolutional layers and the hidden fully connected layers
@@ -191,7 +195,7 @@ class SiameseNet1(nn.Module):
             return self.comparator(torch.cat((pred_1, pred_2), 1))
 
 
-
+        
 class SiameseNet2(nn.Module):
     def __init__(self, auxiliary_loss=False, auxiliary_weight=0.4):
         super().__init__()
@@ -211,8 +215,6 @@ class SiameseNet2(nn.Module):
             nn.ReLU(),
 
         )
-
-
         self.comparator = nn.Sequential(
             nn.Linear(in_features=3*3*2*64, out_features=128),
             nn.Dropout(p=0.3),
@@ -249,4 +251,3 @@ class SiameseNet2(nn.Module):
             return out, classes
         else:
             return out
-

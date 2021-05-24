@@ -11,6 +11,7 @@ nb_rounds = 10
 test_acc = np.empty(nb_rounds)
 
 
+
 print('BASELINE running...')
 lr, bs, opt= 0.01, 20, "SGD"
 k1, k2 = 5, 3
@@ -36,6 +37,7 @@ for i in range(nb_rounds):
 results_mean['baseline'] = test_acc.mean()
 results_std['baseline'] = test_acc.std()
 print('mean={}, std={} with {} rounds'.format(results_mean['baseline'],results_std['baseline'],nb_rounds))
+
 
 
 print('BASELINE optimized running...')
@@ -64,22 +66,24 @@ results_mean['baseline_opt'] = test_acc.mean()
 results_std['baseline_opt'] = test_acc.std()
 print('mean={}, std={} with {} rounds'.format(results_mean['baseline_opt'],results_std['baseline_opt'],nb_rounds))
 
- 
-print('RESNET running...')
-epochs = 25
-optimizer = 'Adam'
-lr = 1e-2
-model = ResNet(nb_residual_blocks = 10, nb_channels = 10, kernel_size = 5,
-               nb_classes = 10, nb_pred = 2,
-               auxiliary_loss=False)
-for i in range(nb_rounds):
 
-    train_data, test_data = read_input()
-    _,_,_,_ = train_model(model, train_data, epochs=epochs, eval_=False, cuda=True, verbose=False, optimizer=optimizer, learning_rate=lr)
-    test_acc[i] = evaluate_model(model, test_data, cuda=True)
-results_mean['resnet'] = test_acc.mean()
-results_std['resnet'] = test_acc.std()
-print('mean={}, std={} with {} rounds'.format(results_mean['resnet'],results_std['resnet'],nb_rounds))
+
+# print('RESNET running...')
+# epochs = 25
+# optimizer = 'Adam'
+# lr = 1e-2
+# model = ResNet(nb_residual_blocks = 10, nb_channels = 10, kernel_size = 5,
+#                nb_classes = 10, nb_pred = 2,
+#                auxiliary_loss=False)
+# for i in range(nb_rounds):
+
+#     train_data, test_data = read_input()
+#     _,_,_,_ = train_model(model, train_data, epochs=epochs, eval_=False, cuda=True, verbose=False, optimizer=optimizer, learning_rate=lr)
+#     test_acc[i] = evaluate_model(model, test_data, cuda=True)
+# results_mean['resnet'] = test_acc.mean()
+# results_std['resnet'] = test_acc.std()
+# print('mean={}, std={} with {} rounds'.format(results_mean['resnet'],results_std['resnet'],nb_rounds))
+
 
 
 print('SIAMESE running...')
@@ -97,21 +101,23 @@ results_std['weight_sharing'] = test_acc.std()
 print('mean={}, std={} with {} rounds'.format(results_mean['weight_sharing'],results_std['weight_sharing'],nb_rounds))
 
 
-print('RESNET_AUX running...')
-epochs = 25
-optimizer = 'Adam'
-lr = 1e-2
-model = ResNet(nb_residual_blocks = 10, nb_channels = 10, kernel_size = 5,
-               nb_classes = 10, nb_pred = 2,
-               auxiliary_loss=True, auxiliary_weight=0.4)
-for i in range(nb_rounds):
 
-    train_data, test_data = read_input()
-    _,_,_,_ = train_model(model, train_data, epochs=epochs, eval_=False, cuda=True, verbose=False, optimizer=optimizer, learning_rate=lr)
-    test_acc[i] = evaluate_model(model, test_data, cuda=True)
-results_mean['resnet_aux'] = test_acc.mean()
-results_std['resnet_aux'] = test_acc.std()
-print('mean={}, std={} with {} rounds'.format(results_mean['resnet_aux'],results_std['resnet_aux'],nb_rounds))
+# print('RESNET_AUX running...')
+# epochs = 25
+# optimizer = 'Adam'
+# lr = 1e-2
+# model = ResNet(nb_residual_blocks = 10, nb_channels = 10, kernel_size = 5,
+#                nb_classes = 10, nb_pred = 2,
+#                auxiliary_loss=True, auxiliary_weight=0.4)
+# for i in range(nb_rounds):
+
+#     train_data, test_data = read_input()
+#     _,_,_,_ = train_model(model, train_data, epochs=epochs, eval_=False, cuda=True, verbose=False, optimizer=optimizer, learning_rate=lr)
+#     test_acc[i] = evaluate_model(model, test_data, cuda=True)
+# results_mean['resnet_aux'] = test_acc.mean()
+# results_std['resnet_aux'] = test_acc.std()
+# print('mean={}, std={} with {} rounds'.format(results_mean['resnet_aux'],results_std['resnet_aux'],nb_rounds))
+
 
 
 print('SIAMESE_AUX_FULL running...')
