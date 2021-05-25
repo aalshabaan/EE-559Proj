@@ -148,9 +148,21 @@ class ResNet(nn.Module):
         
 class SiameseNet1(nn.Module):
     """
-    Siamese model with possible auxiliary losses that are used to train both the convolutional layers and the hidden fully connected layers
+    Siamese model with possible auxiliary losses that are used to train both the convolutional layers and the hidden
+    fully connected layers doing the digit classification.
     """
     def __init__(self, auxiliary_loss=False, auxiliary_weight=0.4):
+        """
+        Construct a siamese CNN with two convolutional layers, two hidden fully-connected layers, and an output layer.
+        This model shares weights across both input channels, and uses an optional auxiliary loss to train everything before the ouput layer
+        The input layer takes tensors of size (batch_size, 2, 14, 14), the main output is of size (batch_size, 2)
+
+        :param auxiliary_loss: bool: Whether to use auxiliary losses, if true the model returns 2 predictions, output and class
+        :param auxiliary_weight: float: The weight of the auxiliary loss compared to the main loss which has a weight of 1
+        :return: if `auxiliary_loss`: returns a tuple of tensors which are (batch_size, 2), (batch_size, 10, 2).
+        The first has predictions of whether the first digit is smaller than the latter, the second has the digit class prediction for each input channel.
+        otherwise returns only the first tensor of size (batch_size,2)
+        """
         super().__init__()
         self.shared_model = nn.Sequential(
             nn.BatchNorm2d(num_features=1),
@@ -183,6 +195,11 @@ class SiameseNet1(nn.Module):
 
 
     def forward(self, x):
+        """
+        Forward pass of the model
+        :param x: Tensor: input tensor
+        :return: *Tensor, comparison predictions and, if self.auxiliary_loss, digit predictions
+        """
         num_1 = x[:,0,:,:].unsqueeze(1)
         num_2 = x[:,1,:,:].unsqueeze(1)
 
@@ -197,7 +214,20 @@ class SiameseNet1(nn.Module):
 
         
 class SiameseNet2(nn.Module):
+    """
+        Siamese model with possible auxiliary losses that are used to train only the convolutional layers.
+        """
     def __init__(self, auxiliary_loss=False, auxiliary_weight=0.4):
+        """Construct a siamese CNN with two convolutional layers, two hidden fully-connected layers, and an output layer.
+        This model shares weights across both input channels, and uses an optional auxiliary loss to train the convolutional layers only
+        The input layer takes tensors of size (batch_size, 2, 14, 14), the main output is of size (batch_size, 2)
+
+        :param auxiliary_loss: bool: Whether to use auxiliary losses, if true the model returns 2 predictions, output and class
+        :param auxiliary_weight: float: The weight of the auxiliary loss compared to the main loss which has a weight of 1
+        :return: if `auxiliary_loss`: returns a tuple of tensors which are (batch_size, 2), (batch_size, 10, 2).
+        The first has predictions of whether the first digit is smaller than the latter, the second has the digit class prediction for each input channel.
+        otherwise returns only the first tensor of size (batch_size,2)
+        """
         super().__init__()
         self.shared_model = nn.Sequential(
             nn.BatchNorm2d(1),
@@ -236,6 +266,11 @@ class SiameseNet2(nn.Module):
         self.auxiliary_weight = auxiliary_weight
 
     def forward(self, x):
+        """
+        Forward pass of the model
+        :param x: Tensor: input tensor
+        :return: *Tensor, comparison predictions and, if self.auxiliary_loss, digit predictions
+        """
         num_1 = x[:,0,:,:].unsqueeze(1)
         num_2 = x[:,1,:,:].unsqueeze(1)
 
