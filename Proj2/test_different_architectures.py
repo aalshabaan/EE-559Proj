@@ -4,6 +4,20 @@ from utils import *
 from nn import *
 import numpy as np
 
+# This code trains and evaluates our "deep learning framework" with three different architectures. 
+# In order to measure the performance of the various models we followed the same approach as in the
+# first project. We train and evaluate each model for 25 epochs over 10 rounds and we provide 
+# the mean test accuracy and standard deviation. When all models are tested the code creates an
+# output file with the name "results.txt' in the Proj2 directory which contains mean and standard
+# deviations for all models. We evaluate the following networks:
+#
+#1) three hidden layers of 25 units and ReLU activations
+#2) three hidden layers of 25 units and Tanh activations
+#3) three hidden layers of 25 units with ReLU activations
+#   and Tanh for the output layer
+
+# We train our models with SGD, batch_size 10, learning_rate 1e-1 and MSE loss.
+
 # Disable autograd
 torch.set_grad_enabled(False)
 
@@ -12,8 +26,6 @@ results_std = {}
 
 nb_rounds = 10
 test_acc = np.empty(nb_rounds)
-
-
 
 print('Using ReLU activations...')
 for i in range(nb_rounds):

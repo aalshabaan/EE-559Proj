@@ -2,11 +2,11 @@ from torch import empty
 
 class Optim(object):
     """
-	Base class for optimization algorithms
+    Base class for optimization algorithms
     """
     def step(self, *input):
         """
-        Performs a single optimization step. Parameter update
+        Performs a single optimization step for the parameters.
         :param input: parameters for step function
         """
         raise NotImplementedError
@@ -31,7 +31,6 @@ class SGD(Optim):
             else:
                 u.append(None)
         self.u = u
-        #print(self.u)
         
     def step(self):
 
