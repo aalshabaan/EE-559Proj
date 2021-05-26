@@ -1,3 +1,6 @@
+"""
+Defines methods for reading the input and training-evaluating the models.
+"""
 import torch
 from torch import nn
 from torch import optim
@@ -11,11 +14,11 @@ def read_input(normalize=True, pairs=1000, verbose=False):
     """
     Read the data from prologue and return Tensor Datasets
     :param normalize: bool: True if we want to normalize the data
-    :param pairs: int: The total number of pairs
-    :param verbose: bool: If True print data information
+    :param pairs: int: Number of pairs of images used for train and test sets 
+    :param verbose: bool: If True print execution information
     :return: trainDataset, testDataset: Torch TensorDataset objects to facilitate batch training
     """
-    
+   
     train_input, train_target, train_classes, test_input, test_target, test_classes = \
         prologue.generate_pair_sets(pairs)
     
@@ -33,11 +36,21 @@ def read_input(normalize=True, pairs=1000, verbose=False):
     trainDataset = TensorDataset(train_input, train_target, train_classes)
     testDataset = TensorDataset(test_input, test_target, test_classes)
 
-
     return trainDataset, testDataset
 
 
 def train_model_epoch(model, optimizer, criterion, train_loader, cuda=False, auxiliary_loss=False, lbda=0.4):
+    """
+    This function trains a trained PyTorch model with the training dataset for one epoch.
+    :param model: nn.Module: The model to train
+    :param criterion: torch.nn CrossEntropyLoss or MSELoss: Either cross entropy or MSE loss
+    :param train_loader: torch.utils.data.DataLoader: The train set 
+    :param cuda: bool: If True move model to GPU
+    :param auxiliary_loss: bool: If true train model with auxiliary losses
+    :param lbda: float: Auxiliary loss weight
+    :return: tr_loss, tr_acc: Training loss and accuracy
+    """
+
     tr_loss = 0
     tr_acc = 0
     for batch_idx, (data, target, classes) in enumerate(train_loader):
@@ -81,6 +94,17 @@ def train_model_epoch(model, optimizer, criterion, train_loader, cuda=False, aux
 
 
 def validate_model_epoch(model, criterion, test_loader, cuda=False, auxiliary_loss=False, lbda=0.4):
+    """
+    This function evaluates a trained PyTorch model with the validation dataset for one epoch.
+    :param model: nn.Module: The model to validate
+    :param criterion: torch.nn CrossEntropyLoss or MSELoss: Either cross entropy or MSE loss
+    :param test_loader: torch.utils.data.DataLoader: The test set 
+    :param cuda: bool: If True move model to GPU
+    :param auxiliary_loss: bool: If true evaluate model with auxiliary losses
+    :param lbda: float: Auxiliary loss weight
+    :return: val_loss, correct_pred: Validation loss and number of correct predictions
+    """
+
     val_loss = 0
     correct_pred = 0
 
@@ -130,36 +154,42 @@ def validate_model_epoch(model, criterion, test_loader, cuda=False, auxiliary_lo
 def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=100 , eval_=True, optimizer='SGD', loss='cross_entropy',
                 validation_split=0.2, verbose=True, cuda=False, momentum=0.0, weight_decay=0.0):
     """
-    Trains the passed PyTorch model on the passed training dataset, the validation data is fixed and isn't randomly sampled at each epoch
+    This function trains a PyTorch model with the training dataset according to the specified parameters for many epochs.
+    There are options to split further the training set to validation in order to monitor the validation accuracy and to move the model to GPU for faster execution.
     :param model: nn.Module: The model to train
     :param train_dataset: torch.util.data.TensorDataset: The training dataset
     :param learning_rate: float: The learning rate
     :param epochs: int: The maximum number of epochs for training
     :param batch_size: int: The batch size
-    :param eval_: bool: True if we want to validate
+    :param eval_: bool: If True we split the training set to validation with the fraction defined by validation_split parameter
     :param optimizer: str: 'SGD' or 'ADAM, which optimizer to use
     :param loss: str: 'mse' or 'cross_entropy', which loss to use
     :param validation_split: float: 0.0 to 1.0, the fraction of the dataset to be used for validation. Has no effect if eval_==False
     :param verbose: bool: If True print training statistics
     :param cuda: bool: If True move model to GPU
-    :param momentum: float: momentum for SGD
-    :param weight_decay: float: weight decay for ADAM
-    :return: tr_loss_list, tr_acc_list, val_loss_list, val_accuracy_list: lists containing the training history
+    :param momentum: float: Momentum for SGD
+    :param weight_decay: float: Weight decay for ADAM
+    :return: tr_loss_list, tr_acc_list, val_loss_list, val_accuracy_list: Lists containing the training history
     """
+    
+    #define optimizer
     if optimizer == 'SGD':
-        optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum) #momentum=0.9
+        optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum)
     elif optimizer == 'Adam':
-        optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay) #weight_decay=0.01 (L2 penalty)
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     else:
         raise Exception('Unsupported optimizer type. Use SGD or Adam')
 
+    #define loss
     if loss == 'cross_entropy':
         criterion = nn.CrossEntropyLoss()
     elif loss == 'mse':
         criterion = nn.MSELoss()
     else:
         raise Exception('Unsupported loss, use cross_entropy or mse')
-
+        
+    #if True split the training set to validation with validation_split fraction
+    #create DataLoader objects for batch training
     if eval_:
         validation_size = int(validation_split * len(train_dataset))
         train_size = len(train_dataset) - validation_size
@@ -169,11 +199,13 @@ def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=
     else:
         train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=False)
 
+    #if True move model to GPU 
     if cuda and torch.cuda.is_available():
         model.cuda()
     else:
         model.cpu()
 
+    #if model has auxiliary loss retrieve weight
     if hasattr(model, 'auxiliary_loss'):
         auxiliary_loss = model.auxiliary_loss
         lbda = model.auxiliary_weight
@@ -181,11 +213,13 @@ def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=
         auxiliary_loss = False
         lbda = 0
 
+    #create lists to log training history 
     tr_loss_list = []
     tr_acc_list = []
     val_loss_list = []
     val_accuracy_list = []
 
+    # for each epoch train model and compute training and validation loss and accuracy
     for epoch in range(epochs):
         model.train()
         tr_loss, tr_acc = train_model_epoch(model, optimizer, criterion, train_loader, cuda, auxiliary_loss, lbda)
@@ -208,7 +242,18 @@ def train_model(model, train_dataset, learning_rate=1e-2, epochs=10, batch_size=
     return tr_loss_list, tr_acc_list, val_loss_list, val_accuracy_list
 
 
+
+
 def evaluate_model(model, test_data, cuda=False, batch_size=100):
+    """
+    This function evaluates a trained PyTorch model with the test dataset per batches.
+    :param model: nn.Module: The trained model
+    :param test_data: torch.util.data.TensorDataset: The test dataset
+    :param cuda: bool: If True move model to GPU
+    :param batch_size: int: The batch size
+    :return: float: Test accuracy
+    """
+    
     test_loader = DataLoader(test_data, batch_size=batch_size)
 
     if hasattr(model, 'auxiliary_loss'):

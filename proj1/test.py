@@ -4,13 +4,27 @@ from models import *
 import numpy as np
 
 
+# This code trains and evaluates all the models described in project report chapter 
+# "Neural network architectures" with 1000 pairs of images over 25 epochs. For each architecture
+# we provide the mean test accuracy and standard deviation over 10 rounds. When all models are 
+# tested the code creates an output file with the name "results.txt' in the Proj1 directory which 
+# contains mean and standard deviations for all models. We evaluate the following networks:
+#
+#1) Baseline Convolutional Neural Network (CNN)
+#2) Optimized CNN
+#3) Residual Network 
+#   (is provided in comments due to high execution time and relatively low performance)
+#4) Siamese Network
+#5) Residual Network with auxiliary losses
+#   (is provided in comments due to high execution time and relatively low performance)
+#6) Siamese Network with auxiliary losses for convolutional and fully connected layers
+#7) Siamese Network with auxiliary losses for convolutional layers
+
+
 results_mean = {}
 results_std = {}
-
 nb_rounds = 10
 test_acc = np.empty(nb_rounds)
-
-
 
 print('BASELINE running...')
 lr, bs, opt= 0.01, 20, "SGD"

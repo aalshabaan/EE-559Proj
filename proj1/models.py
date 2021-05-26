@@ -8,17 +8,46 @@ from torch.nn import functional as F
 
 
 class CNN_1(nn.Module):
+    """
+    This class is used to construct both the baseline and the optimized versions of convolutional neural networks descripted in the report.
+    """
     def __init__(self, nb_channels_1=32, kernel_1=3, nb_channels_2=64, kernel_2=3, nb_hidden_1 = 128, nb_hidden_2 = 10, dropout_p=0.0, padding=True, double_conv=False, batchNorm=False):
+        """
+        Constructs a convolutional neural network with two convolutional layers and three hidden fully-connected layers which result to an output of two units. This model has the functionality to determine automatically the number of input features for the fully connected layers according to the choice of parameters, such as the size of kernel and channels. Additionally, the model includes dropout layers after each major network unit and batch normalization after ReLU activations. Finally, it provides an option to replace each convolution layer with two convolutions where the second one preserves the number of channels and uses the same size of kernel as the first one.
+        
+        The input layer takes tensors of size (batch_size, 2, 14, 14) and returns a tensor of size (batch_size, 2)
+
+        :param nb_channels_1: Int: Number of output channels for the first convolutional layer.
+        :param kernel_1: Int: Size of kernel for the first convolutional layer.
+        :param nb_channels_2: Int: Number of output channels for the second convolutional layer.
+        :param kernel_2: Int: Size of kernel for the second convolutional layer.
+        :param nb_hidden_1: Int: Number of output units for the first hidden layer.
+        :param nb_hidden_2: Int: Number of output units for the second hidden layer.
+        :param dropout_p: float: Probability of an element to be zeroed in the dropout layer.
+        :param padding: bool: If true preserves the dimensionality of the input signal through the convolution layers.
+        :param double_conv: bool: If true replaces each convolution layer with two convolutions where the second one preserves the number of channels and uses the same size of kernel as the first one.
+        :param batchNorm: bool: If true adds batch normalization after ReLU activations.
+        :return: Tensor, with the comparison prediction classes of size (batch_size, 2).
+        """
         super().__init__()
         
+        #compute padding for each convolution to preserve the dimensionality of input signal
         padding_1=(kernel_1-1)//2 if padding else 0
         padding_2=(kernel_2-1)//2 if padding else 0
+        
+        #downsampling size of max pooling layers
         pool = 2
+        
+        #compute the number of features for the input of fully connected layers 
         d1 = (14-kernel_1+1 +2*padding_1)//pool
         d2 = (d1-kernel_2+1 +2*padding_2)//pool
         self.nb_features = nb_channels_2*d2*d2
 
+        #1) Feature Extraction Part
+        #contains the layers for the feature extraction part of the classifier 
         feaure_layers = []
+        
+        #first convolutional layer
         feaure_layers.append(nn.Conv2d(2, nb_channels_1, kernel_size=kernel_1, padding=padding_1))
         feaure_layers.append(nn.ReLU())
         if batchNorm:
@@ -31,6 +60,7 @@ class CNN_1(nn.Module):
         feaure_layers.append(nn.MaxPool2d(kernel_size=(2,2)))
         feaure_layers.append(nn.Dropout2d(p=dropout_p))
 
+        #second convolutional layer
         feaure_layers.append(nn.Conv2d(nb_channels_1, nb_channels_2, kernel_size=kernel_2, padding=padding_2))
         feaure_layers.append(nn.ReLU())
         if batchNorm:
@@ -43,26 +73,38 @@ class CNN_1(nn.Module):
         feaure_layers.append(nn.MaxPool2d(kernel_size=(2,2)))
         feaure_layers.append(nn.Dropout2d(p=dropout_p))
 
+        #feature extractor output
         feaure_layers.append(nn.Flatten())
         self.features = nn.Sequential(*feaure_layers)
 
+        #2) Classifier Part
+        #contains the layers for the classification part of the classifier
         classifier_layers = []
+        
+        #fisrt hidden layer
         classifier_layers.append(nn.Linear(in_features=self.nb_features, out_features=nb_hidden_1))
         classifier_layers.append(nn.ReLU())
         if batchNorm:
             classifier_layers.append(nn.BatchNorm1d(nb_hidden_1))
         classifier_layers.append(nn.Dropout2d(p=dropout_p))
-
+        
+        #second hidden layer
         classifier_layers.append(nn.Linear(in_features=nb_hidden_1, out_features=nb_hidden_2))
         classifier_layers.append(nn.ReLU())
         if batchNorm:
             classifier_layers.append(nn.BatchNorm1d(nb_hidden_2))
         classifier_layers.append(nn.Dropout2d(p=dropout_p))
-
+        
+        #third hidden layer
         classifier_layers.append(nn.Linear(in_features=nb_hidden_2, out_features=2))
         self.classifier = nn.Sequential(*classifier_layers)
 
     def forward(self, x):
+        """
+        Forward pass of the model
+        :param x: Tensor: input tensor
+        :return: Tensor, with the comparison prediction classes
+        """
         x = self.features(x)
         x = self.classifier(x)
         return  x
