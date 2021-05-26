@@ -16,7 +16,6 @@ class CNN_1(nn.Module):
         Constructs a convolutional neural network with two convolutional layers and three hidden fully-connected layers which result to an output of two units. This model has the functionality to determine automatically the number of input features for the fully connected layers according to the choice of parameters, such as the size of kernel and channels. Additionally, the model includes dropout layers after each major network unit and batch normalization after ReLU activations. Finally, it provides an option to replace each convolution layer with two convolutions where the second one preserves the number of channels and uses the same size of kernel as the first one.
         
         The input layer takes tensors of size (batch_size, 2, 14, 14) and returns a tensor of size (batch_size, 2)
-
         :param nb_channels_1: Int: Number of output channels for the first convolutional layer.
         :param kernel_1: Int: Size of kernel for the first convolutional layer.
         :param nb_channels_2: Int: Number of output channels for the second convolutional layer.
@@ -114,24 +113,41 @@ class CNN_1(nn.Module):
 class ResNetBlock(nn.Module):
     def __init__(self, nb_channels, kernel_size,
                  skip_connections=True, batch_normalization=True):
+        """
+        The input layer takes tensors of size (batch_size, nb_channels, 14-kernel_size+1, 14-kernel_size+1), output is a tensor of size (batch_size, nb_channels, 14-kernel_size+1, 14-kernel_size+1)
+        :param nb_channels: Int: Number of input and output channels for convolutional layers.
+        :param kernel_size: Int: Size of kernel for convolutional layers.
+        :param skip_connections: bool: if true skips connection.
+        :param batch_normalization: bool: if true adds batch normalization.
+        :return: a tensor of size (batch_size, nb_channels, 14-kernel_size+1, 14-kernel_size+1)
+        """
         super().__init__()
-
+        
+        #first convolutional layer
         self.conv1 = nn.Conv2d(nb_channels, nb_channels,
                                kernel_size=kernel_size,
                                padding=(kernel_size - 1) // 2)
-
+        
+        #batch normalization
         self.bn1 = nn.BatchNorm2d(nb_channels)
-
+           
+        #second convolutional layer
         self.conv2 = nn.Conv2d(nb_channels, nb_channels,
                                kernel_size=kernel_size,
                                padding=(kernel_size - 1) // 2)
-
+        
+        #batch normalization
         self.bn2 = nn.BatchNorm2d(nb_channels)
 
         self.skip_connections = skip_connections
         self.batch_normalization = batch_normalization
 
     def forward(self, x):
+        """
+        Forward pass of the ResNetBlock
+        :param x: Tensor: input tensor
+        :return: Tensor: output tensor
+        """
         y = F.dropout2d(x, 0.1)
         y = self.conv1(y)
         if self.batch_normalization: y = self.bn1(y)
@@ -147,18 +163,37 @@ class ResNetBlock(nn.Module):
 
     
 class ResNet(nn.Module):
+    """
+    implementation of residual neural network.
+    """
 
     def __init__(self, nb_residual_blocks, nb_channels,
                  kernel_size, nb_classes=10, nb_pred=2,
                  skip_connections=True, batch_normalization=True,
                  auxiliary_loss=False, auxiliary_weight=0.4):
+        """
+        The input layer takes tensors of size (batch_size, 2, 14, 14), main output is a tensor of size (batch_size, 2)
+        :param nb_residual_blocks: Int: Number of residual blocks.
+        :param nb_channels: Int: Number of input(except the first one) and output channels for convolutional layers.
+        :param kernel_size: Int: Size of kernel for convolutional layers.
+        :param nb_classes: Int: Number of classes that the digits belong to. Used if auxiliary_loss equal true.
+        :param nb_pred: Int: Number of outputs to predict.
+        :param skip_connections: bool: if true skip connection.
+        :param batch_normalization: bool: if true adds batch normalization in residual blocks.
+        :param auxiliary_loss: bool: Whether to use auxiliary losses, if true the model returns 2 predictions, output and class.
+        :param auxiliary_weight: float: The weight of the auxiliary loss compared to the main loss which has a weight of 1.
+        :return: if `auxiliary_loss`: returns a tuple of tensors which are (batch_size, 2), (batch_size, 10, 2).
+        The first has predictions of whether the first digit is smaller than the latter, the second has the digit class prediction for each input channel.
+        otherwise returns only the first tensor of size (batch_size,2)
+        """
         super().__init__()
 
         self.conv = nn.Conv2d(2, nb_channels,
                               kernel_size=kernel_size,
                               padding=(kernel_size - 1) // 2)
         self.bn = nn.BatchNorm2d(nb_channels)
-
+        
+        #sequential of ResNetBlocks
         self.resnet_blocks = nn.Sequential(
             *(ResNetBlock(nb_channels, kernel_size, skip_connections, batch_normalization)
               for _ in range(nb_residual_blocks))
@@ -173,6 +208,11 @@ class ResNet(nn.Module):
             self.fc = nn.Linear(nb_channels, nb_pred)
 
     def forward(self, x):
+        """
+        Forward pass of the model
+        :param x: Tensor: input tensor
+        :return: *Tensor, comparison predictions and, if self.auxiliary_loss, digit predictions
+        """
         x = F.relu(self.bn(self.conv(x)))
         x = self.resnet_blocks(x)
         x = F.avg_pool2d(x, 14).view(x.size(0), -1)
@@ -198,7 +238,6 @@ class SiameseNet1(nn.Module):
         Construct a siamese CNN with two convolutional layers, two hidden fully-connected layers, and an output layer.
         This model shares weights across both input channels, and uses an optional auxiliary loss to train everything before the ouput layer
         The input layer takes tensors of size (batch_size, 2, 14, 14), the main output is of size (batch_size, 2)
-
         :param auxiliary_loss: bool: Whether to use auxiliary losses, if true the model returns 2 predictions, output and class
         :param auxiliary_weight: float: The weight of the auxiliary loss compared to the main loss which has a weight of 1
         :return: if `auxiliary_loss`: returns a tuple of tensors which are (batch_size, 2), (batch_size, 10, 2).
@@ -263,7 +302,6 @@ class SiameseNet2(nn.Module):
         """Construct a siamese CNN with two convolutional layers, two hidden fully-connected layers, and an output layer.
         This model shares weights across both input channels, and uses an optional auxiliary loss to train the convolutional layers only
         The input layer takes tensors of size (batch_size, 2, 14, 14), the main output is of size (batch_size, 2)
-
         :param auxiliary_loss: bool: Whether to use auxiliary losses, if true the model returns 2 predictions, output and class
         :param auxiliary_weight: float: The weight of the auxiliary loss compared to the main loss which has a weight of 1
         :return: if `auxiliary_loss`: returns a tuple of tensors which are (batch_size, 2), (batch_size, 10, 2).
@@ -328,3 +366,4 @@ class SiameseNet2(nn.Module):
             return out, classes
         else:
             return out
+
