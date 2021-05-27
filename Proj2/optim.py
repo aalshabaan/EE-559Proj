@@ -33,7 +33,10 @@ class SGD(Optim):
         self.u = u
         
     def step(self):
-
+        """
+        Applies an update step to the model's parameters using their accumulated gradient and, if momentum is used, the
+         previous update value.
+        """
         for u_set, param_set in zip(self.u, self.model.param()):
             if u_set is not None:
                 for u, p in zip(u_set, param_set):
