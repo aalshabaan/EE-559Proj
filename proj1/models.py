@@ -111,15 +111,18 @@ class CNN_1(nn.Module):
 
     
 class ResNetBlock(nn.Module):
+    """
+    Implementation of blocks used in residual neural network.
+    """
     def __init__(self, nb_channels, kernel_size,
                  skip_connections=True, batch_normalization=True):
         """
-        The input layer takes tensors of size (batch_size, nb_channels, 14-kernel_size+1, 14-kernel_size+1), output is a tensor of size (batch_size, nb_channels, 14-kernel_size+1, 14-kernel_size+1)
+        The input layer takes tensors of size (batch_size, nb_channels, 14, 14), output is a tensor of size (batch_size, nb_channels, 14, 14)
         :param nb_channels: Int: Number of input and output channels for convolutional layers.
         :param kernel_size: Int: Size of kernel for convolutional layers.
         :param skip_connections: bool: if true skips connection.
         :param batch_normalization: bool: if true adds batch normalization.
-        :return: a tensor of size (batch_size, nb_channels, 14-kernel_size+1, 14-kernel_size+1)
+        :return: a tensor of size (batch_size, nb_channels, 14, 14)
         """
         super().__init__()
         
@@ -164,9 +167,8 @@ class ResNetBlock(nn.Module):
     
 class ResNet(nn.Module):
     """
-    implementation of residual neural network.
+    implementation of residual neural network with optional auxiliary losses. The model has a convolutional layer, a sequential of residual blocks and a fully-connected layer. 
     """
-
     def __init__(self, nb_residual_blocks, nb_channels,
                  kernel_size, nb_classes=10, nb_pred=2,
                  skip_connections=True, batch_normalization=True,
@@ -178,13 +180,13 @@ class ResNet(nn.Module):
         :param kernel_size: Int: Size of kernel for convolutional layers.
         :param nb_classes: Int: Number of classes that the digits belong to. Used if auxiliary_loss equal true.
         :param nb_pred: Int: Number of outputs to predict.
-        :param skip_connections: bool: if true skip connection.
+        :param skip_connections: bool: if true skips connection.
         :param batch_normalization: bool: if true adds batch normalization in residual blocks.
         :param auxiliary_loss: bool: Whether to use auxiliary losses, if true the model returns 2 predictions, output and class.
         :param auxiliary_weight: float: The weight of the auxiliary loss compared to the main loss which has a weight of 1.
         :return: if `auxiliary_loss`: returns a tuple of tensors which are (batch_size, 2), (batch_size, 10, 2).
         The first has predictions of whether the first digit is smaller than the latter, the second has the digit class prediction for each input channel.
-        otherwise returns only the first tensor of size (batch_size,2)
+        otherwise returns only the first tensor of size (batch_size, 2)
         """
         super().__init__()
 
